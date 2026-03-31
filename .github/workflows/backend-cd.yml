@@ -34,12 +34,11 @@ jobs:
 
       - name: Lint backend
         run: |
-          cd movies
-          pipenv run flake8 .
+          pipenv run lint
 
       - name: Test backend
         run: |
-          pipenv run python manage.py test
+          pipenv run test
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
