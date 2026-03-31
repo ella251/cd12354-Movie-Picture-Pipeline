@@ -34,6 +34,7 @@ jobs:
 
       - name: Lint backend
         run: |
+          cd movies
           pipenv run flake8 .
 
       - name: Test backend
