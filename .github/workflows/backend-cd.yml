@@ -72,6 +72,14 @@ jobs:
         run: |
           aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
 
+      - name: Check AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Test cluster access
+        run: |
+          kubectl get nodes
+
       - name: Deploy to EKS
         env:
           ECR_REPOSITORY: ${{ vars.BACKEND_ECR_REPOSITORY }}
