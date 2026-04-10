@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'starter/backend/**'
-      - '.github/workflows/backend-cd.yaml'
+      - '.github/workflows/backend-cd.yml'
   workflow_dispatch:
 
 jobs:
