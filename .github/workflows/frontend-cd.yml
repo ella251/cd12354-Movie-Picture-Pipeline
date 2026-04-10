@@ -9,6 +9,11 @@ on:
       - '.github/workflows/frontend-cd.yml'
   workflow_dispatch:
 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
+  REACT_APP_MOVIE_API_URL: http://ab1e4f7c3c9144a7bb5157319f0401c1-1322169208.us-east-1.elb.amazonaws.com
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -49,7 +54,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Check AWS identity
         run: |
@@ -60,10 +65,9 @@ jobs:
 
       - name: Build, tag, and push frontend image
         env:
-          ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t "${ECR_REPOSITORY}:${IMAGE_TAG}" ./starter/frontend
+          docker build --build-arg REACT_APP_MOVIE_API_URL=${{ env.REACT_APP_MOVIE_API_URL }} -t "${ECR_REPOSITORY}:${IMAGE_TAG}" ./starter/frontend
           docker push "${ECR_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Install kubectl
@@ -79,7 +83,7 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
+          aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       - name: Test cluster access
         run: |
@@ -87,10 +91,8 @@ jobs:
 
       - name: Deploy to EKS
         env:
-          ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd starter/frontend/k8s
           kustomize edit set image frontend="${ECR_REPOSITORY}:${IMAGE_TAG}"
-          kustomize build | kubectl apply -f -
-
+          kustomize build . | kubectl apply -f -
