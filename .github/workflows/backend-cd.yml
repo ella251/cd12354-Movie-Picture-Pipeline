@@ -147,16 +147,15 @@ jobs:
 
       - name: Install kustomize
         run: |
-          curl -sL -o kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
+          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
           tar -xzf kustomize.tar.gz
           chmod +x kustomize
           sudo mv kustomize /usr/local/bin/kustomize
 
       - name: Set backend image
         run: |
-          kustomize edit set image backend=${{ vars.BACKEND_ECR_REPOSITORY }}:${{ needs.build.outputs.image_tag }}
+          kustomize edit set image backend=${{ secrets.BACKEND_ECR_REPO }}:${{ needs.build.outputs.image_tag }}
 
       - name: Deploy to Kubernetes
         run: |
           kustomize build . | kubectl apply -f -
-
