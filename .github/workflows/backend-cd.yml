@@ -147,9 +147,9 @@ jobs:
 
       - name: Install kustomize
         run: |
-          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
-          tar -xzf kustomize.tar.gz
-          chmod +x kustomize
+          curl -sLo ./install_kustomize.sh https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh
+          chmod +x ./install_kustomize.sh
+          ./install_kustomize.sh
           sudo mv kustomize /usr/local/bin/kustomize
 
       - name: Set backend image
