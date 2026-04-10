@@ -12,7 +12,7 @@ on:
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
-  REACT_APP_MOVIE_API_URL: http://ab1e4f7c3c9144a7bb5157319f0401c1-1322169208.us-east-1.elb.amazonaws.com
+  REACT_APP_MOVIE_API_URL: http://a15fd8112eef7469b8bc012485b53622-2134504095.us-east-1.elb.amazonaws.com
 
 jobs:
   deploy:
