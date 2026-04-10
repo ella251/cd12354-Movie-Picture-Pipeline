@@ -2,138 +2,95 @@ name: Frontend CD
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'starter/frontend/**'
-      - '.github/workflows/frontend-cd.yaml'
+      - '.github/workflows/frontend-cd.yml'
   workflow_dispatch:
 
 jobs:
-  lint:
+  deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: starter/frontend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup NodeJS
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: starter/frontend/.nvmrc
-          cache: npm
+          node-version: 18
+          cache: 'npm'
           cache-dependency-path: starter/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          cd starter/frontend
+          npm ci
 
       - name: Run lint
-        run: npm run lint
-
-  test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: starter/frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: starter/frontend/.nvmrc
-          cache: npm
-          cache-dependency-path: starter/frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
+        run: |
+          cd starter/frontend
+          npm run lint
 
       - name: Run tests
-        run: CI=true npm test
+        run: |
+          cd starter/frontend
+          CI=true npm test -- --watchAll=false
 
-  build:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
-    defaults:
-      run:
-        working-directory: starter/frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: starter/frontend/.nvmrc
-          cache: npm
-          cache-dependency-path: starter/frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set image tag
-        id: meta
-        run: echo "image_tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+      - name: Build frontend
+        run: |
+          cd starter/frontend
+          npm run build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check AWS identity
+        run: |
+          aws sts get-caller-identity
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
+      - name: Build, tag, and push frontend image
+        env:
+          ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build \
-            --build-arg REACT_APP_MOVIE_API_URL=${{ secrets.REACT_APP_MOVIE_API_URL }} \
-            -t ${{ secrets.FRONTEND_ECR_REPO }}:${GITHUB_SHA} .
-
-      - name: Push Docker image
-        run: |
-          docker push ${{ secrets.FRONTEND_ECR_REPO }}:${GITHUB_SHA}
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [build]
-    defaults:
-      run:
-        working-directory: starter/frontend/k8s
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+          docker build -t "${ECR_REPOSITORY}:${IMAGE_TAG}" ./starter/frontend
+          docker push "${ECR_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
 
       - name: Install kustomize
         run: |
-          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
-          tar -xzf kustomize.tar.gz
-          chmod +x kustomize
+          curl -sSL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
           sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
 
-      - name: Set frontend image
+      - name: Update kubeconfig
         run: |
-          kustomize edit set image frontend=${{ secrets.FRONTEND_ECR_REPO }}:${{ needs.build.outputs.image_tag }}
+          aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
+
+      - name: Test cluster access
+        run: |
+          kubectl get nodes
 
       - name: Deploy to EKS
+        env:
+          ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          kustomize build . | kubectl apply -f -
+          cd starter/frontend/k8s
+          kustomize edit set image frontend="${ECR_REPOSITORY}:${IMAGE_TAG}"
+          kustomize build | kubectl apply -f -
 
