@@ -469,3 +469,10 @@ kustomize build | kubectl apply -f -
 ## License
 
 [License](LICENSE.md)
+
+
+**Screenshots**
+
+<img width="1919" height="1199" alt="Screenshot 2026-04-11 013951" src="https://github.com/user-attachments/assets/15cf8d71-3f54-4e68-83c8-a1bcc3aad066" />
+<img width="1919" height="1199" alt="Screenshot 2026-04-11 014001" src="https://github.com/user-attachments/assets/debf66a8-0853-4721-b4c4-2da1bcbf62bf" />
+<img width="1919" height="1088" alt="Screenshot 2026-04-11 014218" src="https://github.com/user-attachments/assets/29f04a0a-2536-480e-9257-b4a6f291210e" />
