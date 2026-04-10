@@ -111,16 +111,16 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
-        run: docker build --tag ${{ secrets.BACKEND_ECR_REPO }}:${GITHUB_SHA} .
+        run: docker build --tag ${{ vars.BACKEND_ECR_REPOSITORY }}:${GITHUB_SHA} .
 
       - name: Push Docker image
-        run: docker push ${{ secrets.BACKEND_ECR_REPO }}:${GITHUB_SHA}
+        run: docker push ${{ vars.BACKEND_ECR_REPOSITORY }}:${GITHUB_SHA}
 
   deploy:
     runs-on: ubuntu-latest
@@ -137,10 +137,10 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+        run: aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
@@ -154,7 +154,7 @@ jobs:
 
       - name: Set backend image
         run: |
-          kustomize edit set image backend=${{ secrets.BACKEND_ECR_REPO }}:${{ needs.build.outputs.image_tag }}
+          kustomize edit set image backend=${{ vars.BACKEND_ECR_REPOSITORY }}:${{ needs.build.outputs.image_tag }}
 
       - name: Deploy to Kubernetes
         run: |
